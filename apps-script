@@ -3,24 +3,44 @@ var sheet = ss.getSheetByName('Sheet1');
 var timezone = "America/Toronto";
 
 
+// Make sure headers include Sign In/Out
+if (sheet.getLastRow() === 0) {
+  sheet.appendRow(["Name", "Date", "Time", "Status"]); // Add Status column
+}
+
 function doGet(e){
-  Logger.log( JSON.stringify(e) );
+  Logger.log(JSON.stringify(e));
   if (e.parameter == 'undefined') {
     return ContentService.createTextOutput("Received data is undefined");
   }
+
   var Curr_Date = new Date();
   var Curr_Time = Utilities.formatDate(Curr_Date, timezone, 'HH:mm:ss');
   var name = stripQuotes(e.parameters.name);
+
+  // Determine Sign In or Sign Out
+  var status = "Sign In"; // default
+  var data = sheet.getDataRange().getValues();
+  for (var i = data.length - 1; i >= 0; i--) {
+    if (data[i][0] === name) { // column A is Name
+      if (data[i][3] === "Sign In") { // last entry was Sign In without a Sign Out
+        status = "Sign Out";
+      }
+      break;
+    }
+  }
+
   var nextRow = sheet.getLastRow() + 1;
   sheet.getRange("A" + nextRow).setValue(name);
   sheet.getRange("B" + nextRow).setValue(Curr_Date);
   sheet.getRange("C" + nextRow).setValue(Curr_Time);
+  sheet.getRange("D" + nextRow).setValue(status); // column D = Status
 
-  return ContentService.createTextOutput("Card holder name is stored in column A");
+  return ContentService.createTextOutput("Card holder name is stored in column A with " + status);
 }
 
 
-function stripQuotes( value ) {
+function stripQuotes(value) {
   return value.toString().replace(/^["']|['"]$/g, "");
 }
 
