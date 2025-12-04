@@ -49,6 +49,12 @@ function doGet(e){
     sheet.getRange("E" + nextRow).setDataValidation(rule);
   }
 
+  // Check if data is being accessed by esp32. If yes provide with sign in/out status directly (to reply text)
+  if (e.parameter.from === "esp32") {
+    // Return only the status (plain text)
+    return ContentService.createTextOutput(status);
+  }
+
   return ContentService.createTextOutput("Card holder name is stored in column A with " + status);
 }
 
