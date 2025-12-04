@@ -5,9 +5,11 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 
-#define RST_PIN 22
-#define SS_PIN 21
+#define RST_PIN 16 
+#define SS_PIN 4 
 #define BUZZER 15
+#define RED_LED 5
+#define GREEN_LED 17
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);
 MFRC522::MIFARE_Key key;
@@ -19,10 +21,12 @@ byte bufferLen = 18;
 byte readBlockData[18];
 
 String card_holder_name;
-const String sheet_url = "https://script.google.com/macros/s/AKfycbwLWv3fdghc6Jj-sAd3v3IinliiqQGYq2y8GYq_vInty1q3i9P7hJAXEFM69zmsBrlM/exec?name=";
+const String sheet_url = "https://script.google.com/macros/s/AKfycby8TatlTKscFYD_QcjkNOQy2pwITWKG8IVSW6a4-PT7bxDZsbhrwsRS9hKtU_2lyOU/exec?name=";
 
-#define WIFI_SSID "Your WiFi Name"
+#define WIFI_SSID "Your Wifi Name"
 #define WIFI_PASSWORD "Your Password"
+
+bool noCardShown = false;  // state flag to only flash once
 
 void setup() {
   Serial.begin(9600);
@@ -39,6 +43,8 @@ void setup() {
   Serial.println(WiFi.localIP());
   Serial.println();
   pinMode(BUZZER, OUTPUT);
+  pinMode(RED_LED, OUTPUT);
+  pinMode(GREEN_LED, OUTPUT);
   SPI.begin();
 }
 
@@ -46,12 +52,16 @@ void loop() {
   mfrc522.PCD_Init();
 
   //Check if a card is repeated
-  if (!mfrc522.PICC_IsNewCardPresent()) { 
-    return;
-  }
+  if (!mfrc522.PICC_IsNewCardPresent()) { return;}
   
   // Check if the card was read properly
   if (!mfrc522.PICC_ReadCardSerial()) { 
+    if (!noCardShown) { // only blink once
+      digitalWrite(RED_LED, HIGH);
+      delay(200);
+      digitalWrite(RED_LED, LOW);
+      noCardShown = true; // prevent repeated blinking
+    }
     return; 
   }
   
@@ -60,7 +70,23 @@ void loop() {
   ReadDataFromBlock(blockNum, readBlockData);
   //mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
 
-  //Print the data read from block
+  //check for an uninitialized card
+  bool isEmpty = true;
+  for (int i = 0; i < 16; i++) {
+    if (readBlockData[i] != 0x00) {
+      isEmpty = false;
+      break;
+    }
+  }
+
+  if (isEmpty) {
+    digitalWrite(RED_LED, HIGH);
+    delay(200);
+    digitalWrite(RED_LED, LOW);
+    return;
+  }
+
+  //card is initialized, Print the data read from block
   Serial.println();
   Serial.print(F("Last data in RFID:"));
   Serial.print(blockNum);
@@ -70,6 +96,11 @@ void loop() {
   }
   Serial.println();
 
+  //flash green LED
+  digitalWrite(GREEN_LED, HIGH); // turn red LED ON (failed read)
+  delay(200);
+  digitalWrite(GREEN_LED, LOW);
+  
   // Play a tone pattern. edit the Hz for different pitches
   tone(BUZZER, 1000); // 1000 Hz tone
   delay(200);
@@ -83,7 +114,15 @@ void loop() {
   if (WiFi.status() == WL_CONNECTED) {
     WiFiClientSecure client;
     client.setInsecure();
-    card_holder_name = sheet_url + String((char*)readBlockData);
+
+    String raw_name = String((char*)readBlockData);
+    raw_name.trim();
+
+    // Replace spaces with %20 for URL encoding
+    raw_name.replace(" ", "%20");
+
+    card_holder_name = sheet_url + raw_name;
+
     card_holder_name.trim();
     Serial.println(card_holder_name);
     HTTPClient https;
