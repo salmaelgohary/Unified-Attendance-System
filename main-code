@@ -210,7 +210,7 @@ void showErrorMessage() {
   lcd.clear();
   lcd.print("Error");
   lcd.setCursor(0, 1);
-  lcd.print("Please scan again");
+  lcd.print("Scan again");
 
   //flash red LED
   digitalWrite(RED_LED, HIGH);
