@@ -16,8 +16,8 @@
 #define GREEN_LED 17
 
 //Wifi credentials 
-#define WIFI_SSID "Your Wifi Name"
-#define WIFI_PASSWORD "Your Password"
+#define WIFI_SSID "Unified"
+#define WIFI_PASSWORD "Un1f1edwireless"
 
 //NTP setup
 const char* ntpServer = "pool.ntp.org";
@@ -239,6 +239,8 @@ bool readRFID(){
   
   // Check if the card was read properly
   if (!mfrc522.PICC_ReadCardSerial()) { return false; }
+
+  memset(readBlockData, 0, sizeof(readBlockData));
   scanTone();
 
   Serial.println();
@@ -309,6 +311,7 @@ void sendToServer(byte readBlockData[]){
     Serial.println(request_url);
 
     HTTPClient https;
+    https.setTimeout(15000);   
     Serial.print(F("[HTTPS] begin...\n"));
 
     if (https.begin(client, (String)request_url)) {
