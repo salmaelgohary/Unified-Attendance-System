@@ -5,7 +5,10 @@ var timezone = "America/Toronto";
 
 // Make sure headers include Sign In/Out
 if (sheet.getLastRow() === 0) {
-  sheet.appendRow(["Name", "Date", "Time", "Status"]); // Add Status column
+  sheet.appendRow(["Name", "Date", "Time", "Status", "Work Type", "Notes", "Master Notes"]); //title columns
+
+  // Bold the header row
+  sheet.getRange(1, 1, 1, 7).setFontWeight("bold"); 
 }
 
 function doGet(e){
@@ -36,6 +39,16 @@ function doGet(e){
   sheet.getRange("C" + nextRow).setValue(Curr_Time);
   sheet.getRange("D" + nextRow).setValue(status); // column D = Status
 
+  // Add dropdown for Work Type if this is a Sign In
+  if (status === "Sign In") {
+    var workTypes = ["SHOP", "OFFICE", "WELDING", "TRAINING", "ISO", "ERP", "HEALTH SAFETY"];
+    var rule = SpreadsheetApp.newDataValidation()
+        .requireValueInList(workTypes, true)
+        .setAllowInvalid(false)
+        .build();
+    sheet.getRange("E" + nextRow).setDataValidation(rule);
+  }
+
   return ContentService.createTextOutput("Card holder name is stored in column A with " + status);
 }
 
@@ -50,36 +63,5 @@ function doPost(e) {
   if (e.parameter.value !== undefined){
     var range = sheet.getRange('A2');
     range.setValue(val);
-  }
-}
-
-function addWorkTypeDropdowns() {
-  var data = sheet.getDataRange().getValues();
-  
-  // Define the allowed options for "Work Type"
-  var workTypes = ["SHOP", "OFFICE", "WELDING", "TRAINING", "ISO", "ERP", "HEALTH SAFETY"];
-  
-  for (var i = 1; i < data.length; i++) { // skip header row
-    var status = data[i][3];  // column D (0-based index)
-    var range = sheet.getRange(i + 1, 5); // column E (Work Type)
-    
-    if (status === "Sign In") {
-      var rule = SpreadsheetApp.newDataValidation()
-        .requireValueInList(workTypes, true)
-        .setAllowInvalid(false)
-        .build();
-      range.setDataValidation(rule);
-    } else {
-      range.clearDataValidations();
-    }
-  }
-}
-
-function onEdit(e) {
-  var range = e.range;
-  var sheet = range.getSheet();
-  
-  if (sheet.getName() === "Sheet1" && range.getColumn() === 4) { // column D = Status
-    addWorkTypeDropdowns();
   }
 }
