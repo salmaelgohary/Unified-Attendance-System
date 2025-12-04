@@ -52,3 +52,34 @@ function doPost(e) {
     range.setValue(val);
   }
 }
+
+function addWorkTypeDropdowns() {
+  var data = sheet.getDataRange().getValues();
+  
+  // Define the allowed options for "Work Type"
+  var workTypes = ["SHOP", "OFFICE", "WELDING", "TRAINING", "ISO", "ERP", "HEALTH SAFETY"];
+  
+  for (var i = 1; i < data.length; i++) { // skip header row
+    var status = data[i][3];  // column D (0-based index)
+    var range = sheet.getRange(i + 1, 5); // column E (Work Type)
+    
+    if (status === "Sign In") {
+      var rule = SpreadsheetApp.newDataValidation()
+        .requireValueInList(workTypes, true)
+        .setAllowInvalid(false)
+        .build();
+      range.setDataValidation(rule);
+    } else {
+      range.clearDataValidations();
+    }
+  }
+}
+
+function onEdit(e) {
+  var range = e.range;
+  var sheet = range.getSheet();
+  
+  if (sheet.getName() === "Sheet1" && range.getColumn() === 4) { // column D = Status
+    addWorkTypeDropdowns();
+  }
+}
