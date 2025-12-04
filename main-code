@@ -155,7 +155,7 @@ void showStatusMessage(String name, const String &message) {
   name.replace("%20", " ");
   
   lcd.home();
-  lcd.clear(); //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  lcd.clear(); 
   lcd.print(name);
   lcd.setCursor(0, 1);
   lcd.print(message);
@@ -233,6 +233,55 @@ void showErrorMessage() {
   delay(4000); // show for 4 seconds
 }
 
+//uninitialized card
+void fastOrUninitializedError() {
+  lcd.home();
+  lcd.clear();
+  lcd.print("Error");
+  lcd.setCursor(0, 1);
+  lcd.print("Scanned too fast/uninitialized card");
+
+  //flash red LED
+  digitalWrite(RED_LED, HIGH);
+  delay(200);
+  digitalWrite(RED_LED, LOW);
+
+  playErrorTone(); 
+
+  // Scrolling parameters
+  int displayWidth = 16;  // width of LCD line
+  String msg = "Scanned too fast/uninitialized card";   
+  unsigned long scrollInterval = 400; // ms between scroll steps
+  unsigned long lastScroll = millis();
+  int scrollIndex = 0;
+
+  // Show message for 10s total
+  unsigned long startTime = millis();
+  while (millis() - startTime < 10000) {
+    // If message fits, just print once
+    if (msg.length() <= displayWidth) {
+      lcd.setCursor(0, 1);
+      lcd.print(msg);
+      delay(2500); // just hold it
+      break;
+    }
+
+    // Scrolling message
+    if (millis() - lastScroll >= scrollInterval) {
+      lcd.setCursor(0, 1);
+      if (scrollIndex + displayWidth <= msg.length()) {
+        lcd.print(msg.substring(scrollIndex, scrollIndex + displayWidth));
+      } else {
+        // pad end with spaces to scroll out
+        lcd.print(msg.substring(scrollIndex) + " ");
+      }
+      scrollIndex++;
+      if (scrollIndex > msg.length()) scrollIndex = 0; // loop scroll if desired
+      lastScroll = millis();
+    }
+  }
+}
+
 bool readRFID(){
   //Check if a card is repeated
   if (!mfrc522.PICC_IsNewCardPresent()) { return false;}
@@ -258,7 +307,7 @@ bool readRFID(){
   }
 
   if (isEmpty) {
-    showErrorMessage();
+    fastOrUninitializedError();
     // Halt the card and stop encryption so next scan works
     mfrc522.PICC_HaltA();
     mfrc522.PCD_StopCrypto1();
